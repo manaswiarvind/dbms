@@ -20,6 +20,9 @@ INSERT INTO CATALOG VALUES(10001,20002,10);
 INSERT INTO CATALOG VALUES(10002,20003,10);
 INSERT INTO CATALOG VALUES(10003,20004,10);
 INSERT INTO CATALOG VALUES(10003,20004,10);
+INSERT INTO CATALOG VALUES(10001,20003,100);
+INSERT INTO CATALOG VALUES(10001,20004,120);
+INSERT INTO CATALOG VALUES(10001,20005,90);
 
 SELECT * FROM SUPPLIER;
 SELECT * FROM PARTS;
@@ -40,3 +43,72 @@ SELECT DISTINCT S.SNAME FROM SUPPLIER S,CATALOG C,PARTS P
  WHERE C.SID=S.SID AND P.PID=C.PID AND 
  C.COST=(SELECT MAX(C2.COST) FROM CATALOG C2
  WHERE C2.PID=P.PID);
+ 
+ /*1. Find the most expensive part overall and the supplier who supplies
+it.*/
+select p.pname,c.cost,s.sname from catalog c,parts p,supplier s
+ where c.sid=s.sid and p.pid=c.pid and c.cost=(select max(cost) from catalog);
+ 
+ 
+/* 2. Find suppliers who do NOT supply any red parts.*/
+ select s.sname from supplier s where exists (select p.pid from parts p 
+ where p.color="red" and not exists(select * from catalog c 
+ where c.sid=s.sid and c.pid=p.pid));
+ 
+ 
+/* 3. Show each supplier and total value of all parts they supply.*/
+ select s.sname,sum(c.cost) as totalvalue from supplier s,catalog c 
+ where s.sid=c.sid  group by s.sname;
+ 
+ /*4. Find suppliers who supply at least 2 parts cheaper than ₹20.*/
+ select s.sname from supplier s,catalog c
+ where c.sid=s.sid and c.cost<20 
+ group by s.sname having count(c.pid)>=2 ;
+ 
+/*5. List suppliers who offer the cheapest cost for each part.*/
+select s.sname,p.pname from supplier s,catalog c,parts p 
+where s.sid=c.sid and p.pid=c.pid and 
+(c.cost)=(select min(c1.cost) from catalog c1 where c1.pid=p.pid);  
+
+/*6. Create a view showing suppliers and the total number of parts they
+supply.*/
+create view s1 as select s.sid,s.sname,count(c.pid) as total_parts 
+from supplier s,catalog c
+ where c.sid=s.sid group by s.sid,s.sname;
+
+ /*7. Create a view of the most expensive supplier for each part.*/
+ create view s3 as select p.pname,c.cost,s.sname from catalog c,parts p,supplier s
+ where c.sid=s.sid and p.pid=c.pid and c.cost=(select max(c1.cost) from catalog c1
+ where c1.pid=c.pid);
+ 
+ /*Create a Trigger to prevent inserting a Catalog cost below 1.*/
+ DELIMITER //
+ create trigger t before insert on catalog 
+ for each row 
+ begin 
+ if (new.cost<1) then
+ signal sqlstate '45000'
+ set message_text= 'improper' ;
+ end if;
+ end;
+ 
+// DELIMITER ;
+ 
+ insert into catalog values(10001,20004,0);
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
